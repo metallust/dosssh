@@ -3,14 +3,14 @@ package connector
 import "errors"
 
 const (
-	OKMSG    = iota 
-	JOINREQMSG   
-	CREATEMSG 
-	LISTMSG   
-	MOVEMSG   
-	EXITMSG   
-	ERRORMSG  
-    RETURNLOBBYMSG
+	OKMSG = iota
+	JOINREQMSG
+	CREATEMSG
+	LISTMSG
+	MOVEMSG
+	EXITMSG
+	ERRORMSG
+	RETURNLOBBYMSG
 )
 
 type Msg struct {
@@ -20,22 +20,22 @@ type Msg struct {
 	replyChan chan Msg
 }
 
-func (m Msg) Reply(msgName int, data interface{}, wantReply bool) (<- chan Msg, error) {
-    if !m.reply {
-        return nil, errors.New("is msg is of non-replyable type")
-    }
-    replymsg := Msg{
-        Name: msgName,
-        Data: data,
-        reply: wantReply,
-    }
-    if wantReply {
-        replymsg.replyChan = make(chan Msg)
-    }
-    
-    m.replyChan <- replymsg
-    close(m.replyChan)
-    return replymsg.replyChan, nil
+func (m Msg) Reply(msgName int, data interface{}, wantReply bool) (<-chan Msg, error) {
+	if !m.reply {
+		return nil, errors.New("is msg is of non-replyable type")
+	}
+	replymsg := Msg{
+		Name:  msgName,
+		Data:  data,
+		reply: wantReply,
+	}
+	if wantReply {
+		replymsg.replyChan = make(chan Msg)
+	}
+
+	m.replyChan <- replymsg
+	close(m.replyChan)
+	return replymsg.replyChan, nil
 }
 
 type Connector struct {

@@ -24,7 +24,7 @@ const (
 	port = "23234"
 )
 
-func teaHandler(InitialModel func(string, *connector.Connector) tea.Model) func(ssh.Session) (tea.Model, []tea.ProgramOption){
+func teaHandler(InitialModel func(string, *connector.Connector) tea.Model) func(ssh.Session) (tea.Model, []tea.ProgramOption) {
 	return func(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 		//generate random blob
 		blob := s.Context().SessionID()
