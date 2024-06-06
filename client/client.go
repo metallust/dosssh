@@ -99,6 +99,13 @@ func (gc *GameClient) Move(move [2]int, doneMsg string) tea.Cmd {
 	}
 }
 
+
+
+type JoinBody struct {
+    Opponent string
+    Turn string
+    Opponentconnector *connector.Connector 
+}
 // this function return as tea msg which is gameclientmsg which contain name and data
 // name is set to the donemsg given by the caller
 // working: this will send "join" message and opponent name string to the server and wait for the reply
@@ -109,12 +116,13 @@ func (gc *GameClient) Join(opponent, doneMsg string) tea.Cmd {
 	return func() tea.Msg {
 		replychan := gc.serverconnector.SendMsg(connector.JOINREQMSG, opponent, true)
 		msg, _ := <-replychan
-		if msg.Name != connector.OKMSG || (msg.Data != "first" && msg.Data != "second") {
+		if msg.Name != connector.OKMSG {
 			//handle that error
 			log.Fatal("Error in Join ... Here is the msg : ", msg)
 			return DoneMsg{Msg: "error", Data: msg.Data}
 		}
-		return DoneMsg{Msg: doneMsg, Data: msg.Data}
+        gc.opponentConnector = msg.Data.(JoinBody).Opponentconnector
+		return DoneMsg{Msg: doneMsg, Data: []string{opponent, msg.Data.(JoinBody).Turn}}
 	}
 }
 
@@ -129,10 +137,9 @@ func (gc *GameClient) AcceptRequest(accept bool, donemsg string) tea.Cmd {
 			return DoneMsg{Msg: donemsg}
 		}
 		gc.joinrequestmsg.Reply(connector.OKMSG, nil, false)
-		data :=gc.joinrequestmsg.Data.(map[string]interface{})
-		opponentConn := data["connector"]
-		gc.opponentConnector = opponentConn.(*connector.Connector)
-        return DoneMsg{Msg: donemsg, Data: gc.joinrequestmsg.Data}
+		data :=gc.joinrequestmsg.Data.(JoinBody)
+		gc.opponentConnector = data.Opponentconnector
+        return DoneMsg{Msg: donemsg, Data: []string{data.Opponent, data.Turn}}
 	}
 }
 
@@ -148,7 +155,7 @@ func (gc *GameClient) ListenServer() tea.Cmd {
 		switch msg.Name {
 		case connector.JOINREQMSG:
             gc.joinrequestmsg = msg
-			return GameClientMsg{Msg: JOINREQMSG, Data: msg}
+			return GameClientMsg{Msg: JOINREQMSG, Data: msg.Data.(JoinBody).Opponent}
 		case connector.ERRORMSG:
 			return GameClientMsg{Msg: ERRORMSG, Data: msg.Data}
 		}
