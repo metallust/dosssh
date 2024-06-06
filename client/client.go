@@ -34,6 +34,7 @@ type GameClient struct {
 	serverconnector   *connector.Connector
 	opponentConnector *connector.Connector
 	user              string
+    joinrequestmsg   connector.Msg
 }
 
 func NewGameClient(c *connector.Connector, u string) *GameClient {
@@ -117,18 +118,21 @@ func (gc *GameClient) Join(opponent, doneMsg string) tea.Cmd {
 	}
 }
 
-func (gc *GameClient) AcceptRequest(accept bool, msg connector.Msg, donemsg string) tea.Cmd {
+func (gc *GameClient) AcceptRequest(accept bool, donemsg string) tea.Cmd {
 	return func() tea.Msg {
+        if gc.joinrequestmsg.Name != connector.JOINREQMSG {
+            return DoneMsg{Msg: "error", Data: "No join request found"}
+        }
 		if !accept {
-			msg.Reply(connector.ERRORMSG, nil, false)
+			gc.joinrequestmsg.Reply(connector.ERRORMSG, nil, false)
+            gc.joinrequestmsg = connector.Msg{}
 			return DoneMsg{Msg: donemsg}
 		}
-		msg.Reply(connector.OKMSG, nil, false)
-		msg.Reply(connector.ERRORMSG, nil, false)
-		data := msg.Data.(map[string]interface{})
+		gc.joinrequestmsg.Reply(connector.OKMSG, nil, false)
+		data :=gc.joinrequestmsg.Data.(map[string]interface{})
 		opponentConn := data["connector"]
 		gc.opponentConnector = opponentConn.(*connector.Connector)
-        return DoneMsg{Msg: donemsg, Data: msg.Data}
+        return DoneMsg{Msg: donemsg, Data: gc.joinrequestmsg.Data}
 	}
 }
 
@@ -143,6 +147,7 @@ func (gc *GameClient) ListenServer() tea.Cmd {
 		}
 		switch msg.Name {
 		case connector.JOINREQMSG:
+            gc.joinrequestmsg = msg
 			return GameClientMsg{Msg: JOINREQMSG, Data: msg}
 		case connector.ERRORMSG:
 			return GameClientMsg{Msg: ERRORMSG, Data: msg.Data}
