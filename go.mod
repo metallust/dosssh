@@ -1,4 +1,4 @@
-module github.com/metallust/sshGameClient
+module github.com/metallust/dosssh
 
 go 1.22.1
 

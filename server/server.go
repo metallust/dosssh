@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/charmbracelet/log"
-	"github.com/metallust/sshGameClient/connector"
+	"github.com/metallust/dosssh/connector"
 )
 
 type User struct {

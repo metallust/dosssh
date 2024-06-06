@@ -4,7 +4,7 @@ import (
 	"log"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/metallust/sshGameClient/connector"
+	"github.com/metallust/dosssh/connector"
 )
 
 type GameClientOpponentMsg struct {

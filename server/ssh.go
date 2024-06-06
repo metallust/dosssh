@@ -16,7 +16,7 @@ import (
 	"github.com/charmbracelet/wish/activeterm"
 	"github.com/charmbracelet/wish/bubbletea"
 	"github.com/charmbracelet/wish/logging"
-	"github.com/metallust/sshGameClient/connector"
+	"github.com/metallust/dosssh/connector"
 )
 
 const (
