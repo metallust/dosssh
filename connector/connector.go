@@ -10,6 +10,7 @@ const (
 	MOVEMSG   
 	EXITMSG   
 	ERRORMSG  
+    RETURNLOBBYMSG
 )
 
 type Msg struct {
