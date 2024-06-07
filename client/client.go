@@ -146,7 +146,7 @@ func (gc *GameClient) ListenServer() tea.Cmd {
 		msg, more := gc.serverconnector.GetMsg()
 		log.Println(gc.user, "LISTENSERVER :", msg, more)
 		if !more {
-			log.Println("Bubbletea Application: Server disconnected ...")
+			log.Println("LISTENSERVER shutting down: Server disconnected ...", gc.user)
 			return GameClientMsg{ERRORMSG, "server connection closed"}
 		}
 		switch msg.Name {
@@ -165,7 +165,7 @@ func (gc *GameClient) ListenOpponent() tea.Cmd {
 		msg, more := gc.opponentConnector.GetMsg()
 		log.Println(gc.user, "LISTENOPPONENT :", msg, more)
 		if !more {
-			log.Println("Bubbletea Application: Opponent disconnected ...")
+			log.Println("LISTENOPPONENT shutting down: Opponent disconnected ...", gc.user)
 			return nil
 		}
 		switch msg.Name {
