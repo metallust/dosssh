@@ -19,7 +19,6 @@ type GameClientMsg struct {
 
 const (
 	JOINREQMSG = iota
-	DISCONNECTEDMSG
 	MOVEMSG
 	ERRORMSG
 	UNKNOWMSG
@@ -167,7 +166,7 @@ func (gc *GameClient) ListenOpponent() tea.Cmd {
 		log.Println(gc.user, "LISTENOPPONENT :", msg, more)
 		if !more {
 			log.Println("Bubbletea Application: Opponent disconnected ...")
-			return GameClientOpponentMsg{DISCONNECTEDMSG, "server connection closed"}
+			return nil
 		}
 		switch msg.Name {
 		case connector.MOVEMSG:

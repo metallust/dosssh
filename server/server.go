@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/ssh"
 	"github.com/metallust/dosssh/client"
 	"github.com/metallust/dosssh/connector"
 )
@@ -93,11 +94,13 @@ func JoinGame(user string, msg connector.Msg) {
 	u := Users[user]
 	u.Opponent = opponent
 	u.stage = "ingame"
+	u.OpponentConn = data.Opponentconnector
 	Users[user] = u
 
 	o := Users[opponent]
 	o.Opponent = user
 	o.stage = "ingame"
+	o.OpponentConn = oppreqdata.Opponentconnector
 	Users[opponent] = o
 
 	UserMut.Unlock()
@@ -117,32 +120,86 @@ func ListGames(user string, msg connector.Msg) {
 	log.Info("LIST: list sent", "list", data)
 }
 
-func ExitGame(user string) {
-
-	UserMut.Lock()
-	Users[user].connection.Close()
-	// if game is in progress
-	opponent := Users[user].Opponent
-	if opponent != "" {
-		// send opponent the opponent abort msg
-		// send opponent to the lobby
-		o := Users[opponent]
-		o.Opponent = ""
-		o.stage = "lobby"
-		Users[Users[user].Opponent] = o
-		Users[opponent].connection.SendMsg(connector.ERRORMSG, "Opponent disconnected ...", false)
-	}
-	// remove user from Users list
-	log.Info("Send opponent abort msg --<")
-	delete(Users, user)
-	UserMut.Unlock()
-	log.Info("EXIT: User removed", "user", user, "Users", Users)
-}
-
 func randomPlayer() (string, string) {
 	// randomly decide who is going first
 	if randbool := rand.Intn(2) == 0; randbool {
 		return "first", "second"
 	}
 	return "second", "first"
+}
+
+func ListenClient(user string, c *connector.Connector) {
+	for {
+		clientMsg, more := c.GetMsg()
+		if more == false {
+			log.Info("Channel closed stopping go routing", "user", user)
+			return
+		}
+		switch clientMsg.Name {
+		//TODO: add error handling if the function return any error forward that to client
+		case connector.CREATEMSG:
+			CreateGame(user, clientMsg)
+		case connector.RETURNLOBBYMSG:
+			ReturnToLobby(user, clientMsg)
+		case connector.LISTMSG:
+			ListGames(user, clientMsg)
+		case connector.JOINREQMSG:
+			JoinGame(user, clientMsg)
+		}
+	}
+}
+
+func ExitMiddleware(next ssh.Handler) ssh.Handler {
+	return func(s ssh.Session) {
+		next(s)
+		user := getUser(s)
+        log.Info("EXITMIDDLEWARE :Turning on all the channels", "user", user)
+		UserMut.Lock()
+        //close connector
+		Users[user].connection.Close()
+
+        //check if in game
+		opponent := Users[user].Opponent
+		if opponent != "" {
+			o := Users[opponent]
+
+            //clean opponent and add opponent back to lobby
+			o.Opponent = ""
+			o.stage = "lobby"
+			o.OpponentConn.Close()
+			o.OpponentConn = nil
+			Users[opponent] = o
+
+            //send error msg to client
+			Users[opponent].connection.SendMsg(connector.ERRORMSG, "Opponent disconnected ...", false)
+		}
+
+        //delete user from []User
+		delete(Users, user)
+		UserMut.Unlock()
+		log.Info("EXITMIDDLEWARE: SUCCESSFULL User removed", "user", user, "Users", Users)
+	}
+}
+
+func InitUser(s ssh.Session) (string, *connector.Connector) {
+
+	UserMut.Lock()
+	user := getUser(s)
+	//create user
+	c := connector.NewConnector()
+	cpair := connector.CreateConnectorPair(c)
+	Users[user] = User{
+		connection: c,
+		stage:      "lobby",
+	}
+	UserMut.Unlock()
+	//listen to client
+	go ListenClient(user, c)
+	return user, cpair
+}
+
+func getUser(s ssh.Session) string {
+	blob := s.Context().SessionID()
+	user := s.User() + blob[:5]
+	return user
 }

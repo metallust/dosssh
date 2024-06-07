@@ -26,37 +26,8 @@ const (
 
 func teaHandler(InitialModel func(string, *connector.Connector) tea.Model) func(ssh.Session) (tea.Model, []tea.ProgramOption) {
 	return func(s ssh.Session) (tea.Model, []tea.ProgramOption) {
-		//generate random blob
-		blob := s.Context().SessionID()
-		user := s.User() + blob[:5]
-
-		// NOTE : Actual user is create here
-		c := connector.NewConnector()
-		cpair := connector.CreateConnectorPair(c)
-		Users[user] = User{
-			connection: c,
-			stage:      "lobby",
-		}
-		go func() {
-			for {
-				clientMsg, more := c.GetMsg()
-				if more == false {
-					log.Info("Channel closed stopping go routing", "user", user)
-					return
-				}
-				switch clientMsg.Name {
-				//TODO: add error handling if the function return any error forward that to client
-				case connector.CREATEMSG:
-					CreateGame(user, clientMsg)
-				case connector.RETURNLOBBYMSG:
-					ReturnToLobby(user, clientMsg)
-				case connector.LISTMSG:
-					ListGames(user, clientMsg)
-				case connector.JOINREQMSG:
-					JoinGame(user, clientMsg)
-				}
-			}
-		}()
+        user, cpair := InitUser(s)
+        //init model and return to ssh server
 		m := InitialModel(user, cpair)
 		return m, []tea.ProgramOption{tea.WithAltScreen()}
 	}
@@ -67,15 +38,9 @@ func StartServer(initModel func(user string, conn *connector.Connector) tea.Mode
 		bubbletea.Middleware(teaHandler(initModel)),
 		activeterm.Middleware(),
 		logging.Middleware(),
-		func(next ssh.Handler) ssh.Handler {
-			return func(s ssh.Session) {
-				next(s)
-				user := s.User() + s.Context().SessionID()[:5]
-				log.Info("Turning on all the channels", "user", user)
-				ExitGame(user)
-			}
-		},
-	))
+        //middleware to handle user exit
+        ExitMiddleware,
+		))
 
 	if err != nil {
 		log.Error("Could not start server", "error", err)
@@ -99,3 +64,4 @@ func StartServer(initModel func(user string, conn *connector.Connector) tea.Mode
 		log.Error("Could not stop server", "error", err)
 	}
 }
+
